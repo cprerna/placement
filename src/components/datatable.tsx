@@ -13,20 +13,14 @@ import {
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ChevronDown, Printer } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, Printer, Eye } from 'lucide-react';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AddEditForm } from '@/components/add-edit-form';
+import { ViewForm } from '@/components/view-form';
+import { deleteStudentAction } from '@/actions/student-form-action';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -46,10 +40,6 @@ export type PlacementData = {
   reporting_month: string;
   unique_code: string;
   name: string;
-  photo: string;
-  application_form: string;
-  attendance: string;
-  placement_doc: string;
   course: string;
   gender: string;
   phone: string;
@@ -66,8 +56,6 @@ export type PlacementData = {
   sector: string;
   posting_entry_level_job: string;
   placement_county: string;
-  placement_proof: string;
-  training_proof: string;
   training_proof_uploaded: string;
   placement_proof_uploaded: string;
   green_job: string;
@@ -79,25 +67,6 @@ export type PlacementData = {
 
 export const columns: ColumnDef<InferSelectModel<typeof studentsTable>>[] = [
   {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
     accessorKey: 'unique_code',
     header: ({ column }) => (
       <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
@@ -106,37 +75,6 @@ export const columns: ColumnDef<InferSelectModel<typeof studentsTable>>[] = [
       </Button>
     ),
     cell: ({ row }) => <div className="font-mono">{row.getValue('unique_code')}</div>,
-  },
-  {
-    accessorKey: 'photo',
-    header: 'Photo',
-    cell: ({ row }) =>
-      row.getValue('photo') ? (
-        <img
-          src={row.getValue('photo')}
-          alt="Photo"
-          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }}
-        />
-      ) : (
-        <span className="text-xs text-gray-400">No Photo</span>
-      ),
-  },
-  {
-    accessorKey: 'application_form',
-    header: 'Application Form',
-    cell: ({ row }) =>
-      row.getValue('application_form') ? (
-        <a
-          href={row.getValue('application_form')}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline"
-        >
-          View
-        </a>
-      ) : (
-        <span className="text-xs text-gray-400">N/A</span>
-      ),
   },
   {
     accessorKey: 'name',
@@ -174,23 +112,6 @@ export const columns: ColumnDef<InferSelectModel<typeof studentsTable>>[] = [
     cell: ({ row }) => <div>{row.getValue('course')}</div>,
   },
   {
-    accessorKey: 'attendance',
-    header: 'Attendance',
-    cell: ({ row }) =>
-      row.getValue('attendance') ? (
-        <a
-          href={row.getValue('attendance')}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline"
-        >
-          View
-        </a>
-      ) : (
-        <span className="text-xs text-gray-400">N/A</span>
-      ),
-  },
-  {
     accessorKey: 'educational_qualification',
     header: 'Education',
     cell: ({ row }) => <div>{row.getValue('educational_qualification')}</div>,
@@ -219,23 +140,6 @@ export const columns: ColumnDef<InferSelectModel<typeof studentsTable>>[] = [
     accessorKey: 'designation',
     header: 'Designation',
     cell: ({ row }) => <div>{row.getValue('designation')}</div>,
-  },
-  {
-    accessorKey: 'placement_doc',
-    header: 'Placement Doc',
-    cell: ({ row }) =>
-      row.getValue('placement_doc') ? (
-        <a
-          href={row.getValue('placement_doc')}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline"
-        >
-          View
-        </a>
-      ) : (
-        <span className="text-xs text-gray-400">N/A</span>
-      ),
   },
   {
     accessorKey: 'sector',
@@ -303,45 +207,67 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [selectedRow, setSelectedRow] = React.useState<InferSelectModel<typeof studentsTable> | null>(null);
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editForm, setEditForm] = React.useState<any>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
 
   const handleRowClick = (row: InferSelectModel<typeof studentsTable>) => {
     setSelectedRow(row);
-    setIsModalOpen(true);
+    setIsEditDialogOpen(false); // Reset edit dialog state
+    setIsViewDialogOpen(true);
   };
 
-  const handlePrint = () => {
-    // Small delay to ensure modal is fully rendered
-    setTimeout(() => {
-      window.print();
-    }, 100);
+  const handleViewDialogClose = (open: boolean) => {
+    setIsViewDialogOpen(open);
+    // Don't clear selectedRow here if we're transitioning to edit
+    if (!open && !isEditDialogOpen) {
+      setSelectedRow(null);
+    }
   };
 
   const handleEdit = () => {
-    setEditForm(selectedRow);
-    setIsEditing(true);
+    console.log('Edit button clicked, current selectedRow:', selectedRow);
+    console.log('Setting edit dialog to true');
+    setIsViewDialogOpen(false);
+    setIsEditDialogOpen(true);
   };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setEditForm({
-      ...editForm,
-      [e.target.name]: e.target.value,
-    });
+  const handleEditComplete = async (data: any) => {
+    console.log('Edit completed, refreshing data...');
+    // Handle any data refresh logic here if needed
+    setIsEditDialogOpen(false);
+    setIsViewDialogOpen(false);
+    setSelectedRow(null);
   };
 
-  const handleEditSave = () => {
-    // TODO: Save logic (API call or state update)
-    setIsEditing(false);
-    setIsModalOpen(false);
+  const handleEditDialogClose = (open: boolean) => {
+    setIsEditDialogOpen(open);
+    if (!open) {
+      setSelectedRow(null);
+      setIsViewDialogOpen(false);
+    }
   };
 
-  const handleEditCancel = () => {
-    setIsEditing(false);
+  const handleDelete = async (id: number) => {
+    console.log('Delete student with ID:', id);
+
+    try {
+      const result = await deleteStudentAction(id);
+
+      if (result.success) {
+        console.log('Student deleted successfully:', result.message);
+        setIsViewDialogOpen(false);
+        setSelectedRow(null);
+        // The page will be revalidated automatically by the server action
+      } else {
+        console.error('Failed to delete student:', result.error);
+        alert(`Failed to delete student: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      alert('An error occurred while deleting the student. Please try again.');
+    }
   };
 
   const table = useReactTable({
@@ -354,14 +280,12 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: 'includesString',
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
       globalFilter,
     },
   });
@@ -408,38 +332,44 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
 
   return (
     <div className="w-full">
-      <div className="flex items-center mr-auto py-4">
-        <Input
-          placeholder="Search all fields..."
-          value={globalFilter ?? ''}
-          onChange={(event) => setGlobalFilter(String(event.target.value))}
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-4">
-              Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    {column.id.replace(/_/g, ' ')}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex items-center justify-between py-4">
+        <div className="flex items-center space-x-4">
+          <Input
+            placeholder="Search all fields..."
+            value={globalFilter ?? ''}
+            onChange={(event) => setGlobalFilter(String(event.target.value))}
+            className="max-w-sm lg:min-w-md"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      onSelect={(event) => event.preventDefault()}
+                    >
+                      {column.id.replace(/_/g, ' ')}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <AddEditForm mode="add" />
+        </div>
       </div>
       {/* Responsive Table Wrapper */}
       <div className="w-full">
@@ -466,22 +396,11 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}
-                      data-state={row.getIsSelected() && 'selected'}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleRowClick(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          onClick={(e) => {
-                            // Prevent row click when clicking on checkbox
-                            if (cell.column.id === 'select') {
-                              e.stopPropagation();
-                            }
-                          }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
+                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}
                     </TableRow>
                   ))
@@ -500,8 +419,7 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
 
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
-          selected.
+          {table.getFilteredRowModel().rows.length} total row(s).
         </div>
         <div className="space-x-2">
           <Button
@@ -518,336 +436,27 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
         </div>
       </div>
 
-      {/* Details Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="min-w-[80vw] max-w-none h-[80vh] flex flex-col print:min-w-full print:max-w-none print:h-auto print:max-h-none print:overflow-visible print:block print:p-8">
-          <DialogHeader className="flex-shrink-0 print:mb-6">
-            <DialogTitle className="print:text-2xl print:font-bold print:text-center print:mb-4">
-              Placement Details
-            </DialogTitle>
-            <DialogDescription className="print:text-lg print:text-center print:mb-6">
-              Complete information for {selectedRow?.name}
-            </DialogDescription>
-          </DialogHeader>
+      {/* View Student Modal */}
+      {selectedRow && (
+        <ViewForm
+          studentData={selectedRow}
+          open={isViewDialogOpen}
+          onOpenChange={handleViewDialogClose}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
-          {selectedRow && (
-            <div className="flex-1 overflow-y-auto print:overflow-visible print:text-black print:bg-white print:block">
-              {/* Move image and application form here */}
-              {selectedRow.photo && (
-                <div className="mb-2">
-                  <img
-                    src={selectedRow.photo}
-                    alt="Photo"
-                    style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }}
-                  />
-                </div>
-              )}
-              {selectedRow.application_form && (
-                <div className="mb-4">
-                  <a
-                    href={selectedRow.application_form}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    Open Application Form
-                  </a>
-                </div>
-              )}
-
-              {/* Print Title - only visible in print */}
-              <div className="hidden print:block print:text-center print:mb-8">
-                <h1 className="text-3xl font-bold mb-2">Placement Record</h1>
-                <h2 className="text-xl mb-4">
-                  {selectedRow.name} - {selectedRow.unique_code}
-                </h2>
-                <hr className="border-gray-800 border-t-2" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 print:grid-cols-1 print:gap-4 print:py-0">
-                {/* Personal Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Personal Information
-                  </h3>
-
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Unique Code:</strong> {selectedRow.unique_code}
-                    </div>
-                    <div>
-                      <strong>Name:</strong> {selectedRow.name}
-                    </div>
-                    <div>
-                      <strong>Email:</strong> {selectedRow.email}
-                    </div>
-                    <div>
-                      <strong>Phone:</strong> {selectedRow.phone}
-                    </div>
-                    <div>
-                      <strong>Gender:</strong> {selectedRow.gender}
-                    </div>
-                    <div>
-                      <strong>Education:</strong> {selectedRow.educational_qualification}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Location Information
-                  </h3>
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Region:</strong> {selectedRow.region}
-                    </div>
-                    <div>
-                      <strong>City:</strong> {selectedRow.city}
-                    </div>
-                    <div>
-                      <strong>State:</strong> {selectedRow.state}
-                    </div>
-                    <div>
-                      <strong>Country:</strong> {selectedRow.placement_county}
-                    </div>
-                    <div>
-                      <strong>Address:</strong> {selectedRow.address}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Training Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Training Information
-                  </h3>
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Course:</strong> {selectedRow.course}
-                    </div>
-                    <div>
-                      <strong>Start Date:</strong> {selectedRow.start_date}
-                    </div>
-                    <div>
-                      <strong>End Date:</strong> {selectedRow.end_date}
-                    </div>
-                    <div>
-                      <strong>Reporting Month:</strong> {selectedRow.reporting_month}
-                    </div>
-                    <div>
-                      <strong>Center Name:</strong> {selectedRow.center_name}
-                    </div>
-                    {selectedRow.attendance && (
-                      <div>
-                        <strong>Attendance:</strong>{' '}
-                        <a
-                          href={selectedRow.attendance}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          View Attendance
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Placement Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Placement Information
-                  </h3>
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Company:</strong> {selectedRow.company_name}
-                    </div>
-                    <div>
-                      <strong>Designation:</strong> {selectedRow.designation}
-                    </div>
-                    <div>
-                      <strong>Placement Month:</strong> {selectedRow.placement_month}
-                    </div>
-                    <div>
-                      <strong>Entry Level Job:</strong> {selectedRow.posting_entry_level_job}
-                    </div>
-                    {selectedRow.placement_doc && (
-                      <div>
-                        <strong>Placement Doc:</strong>{' '}
-                        <a
-                          href={selectedRow.placement_doc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          View
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Sector & Categories */}
-                <div className="space-y-4 md:col-span-2 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Sector & Categories
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-1 print:space-y-3">
-                    <div>
-                      <strong>Sector:</strong> {selectedRow.sector}
-                    </div>
-                    <div>
-                      <strong>Green Job:</strong> {selectedRow.green_job}
-                    </div>
-                    <div>
-                      <strong>Women Headed Household:</strong> {selectedRow.household_women_headed}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Income Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Income Information
-                  </h3>
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Pre-Training Income:</strong> {selectedRow.pre_training_income || 'N/A'}
-                    </div>
-                    <div>
-                      <strong>Post-Training Income:</strong> {selectedRow.post_training_income}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Information */}
-                <div className="space-y-4 print:mb-6 print:break-inside-avoid">
-                  <h3 className="text-lg font-semibold border-b pb-2 print:text-xl print:font-bold print:border-b-2 print:border-gray-800 print:pb-3 print:mb-4">
-                    Additional Information
-                  </h3>
-                  <div className="space-y-2 print:space-y-3">
-                    <div>
-                      <strong>Training Proof:</strong> {selectedRow.training_proof || 'N/A'}
-                    </div>
-                    <div>
-                      <strong>Placement Proof:</strong> {selectedRow.placement_proof || 'N/A'}
-                    </div>
-                    <div>
-                      <strong>Remarks:</strong> {selectedRow.remarks || 'N/A'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="flex-shrink-0 print:hidden">
-            {isEditing ? (
-              <>
-                <Button variant="outline" onClick={handleEditCancel}>
-                  Cancel
-                </Button>
-                <Button onClick={handleEditSave}>
-                  Save
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Close
-                </Button>
-                <Button variant="outline" onClick={handleEdit}>
-                  Edit
-                </Button>
-                <Button onClick={handlePrint}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-
-          {isEditing && editForm && (
-            <div
-              className="p-4"
-              style={{
-                maxHeight: '60vh',
-                overflowY: 'auto',
-              }}
-            >
-              {/* Show photo and application form in edit mode */}
-              {editForm.photo && (
-                <div className="mb-2">
-                  <img
-                    src={typeof editForm.photo === 'string' ? editForm.photo : URL.createObjectURL(editForm.photo)}
-                    alt="Photo"
-                    style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }}
-                  />
-                </div>
-              )}
-              {editForm.application_form && typeof editForm.application_form === 'string' && (
-                <div className="mb-4">
-                  <a
-                    href={editForm.application_form}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    Open Application Form
-                  </a>
-                </div>
-              )}
-
-              <form className="space-y-4">
-                {Object.keys(editForm).map((key) => {
-                  // File fields
-                  if (
-                    key === 'photo' ||
-                    key === 'application_form' ||
-                    key === 'attendance' ||
-                    key === 'placement_doc'
-                  ) {
-                    return (
-                      <div key={key}>
-                        <label className="block font-semibold capitalize">{key.replace(/_/g, ' ')}</label>
-                        <input
-                          type="file"
-                          name={key}
-                          accept={key === 'photo' ? 'image/*' : undefined}
-                          className="border rounded px-2 py-1 w-full"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setEditForm({
-                                ...editForm,
-                                [key]: file,
-                              });
-                            }
-                          }}
-                        />
-                      </div>
-                    );
-                  }
-                  // Text fields
-                  return (
-                    <div key={key}>
-                      <label className="block font-semibold capitalize">{key.replace(/_/g, ' ')}</label>
-                      <input
-                        className="border rounded px-2 py-1 w-full"
-                        name={key}
-                        value={editForm[key] ?? ''}
-                        onChange={handleEditChange}
-                        disabled={key === 'id'} // Prevent editing the id field
-                      />
-                    </div>
-                  );
-                })}
-              </form>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Edit Student Modal */}
+      {selectedRow && (
+        <AddEditForm
+          mode="edit"
+          studentData={selectedRow}
+          open={isEditDialogOpen}
+          onOpenChange={handleEditDialogClose}
+          onSubmit={handleEditComplete}
+        />
+      )}
     </div>
   );
 }

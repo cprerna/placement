@@ -7,10 +7,10 @@ export const studentsTable = pgTable('students', {
   reporting_month: varchar({ length: 100 }),
   unique_code: varchar({ length: 50 }),
   name: varchar({ length: 255 }).notNull(),
-  photo: varchar({ length: 255 }),
-  application_form: varchar({ length: 255 }),
-  attendance: varchar({ length: 255 }),
-  placement_doc: varchar({ length: 255 }),
+  photo_key: varchar({ length: 255 }), // S3 key for deletion
+  application_form_key: varchar({ length: 255 }), // S3 key for deletion
+  attendance_key: varchar({ length: 255 }), // S3 key for deletion
+  placement_doc_key: varchar({ length: 255 }), // S3 key for deletion
   course: varchar({ length: 100 }),
   gender: varchar({ length: 100 }),
   phone: varchar({ length: 100 }),
@@ -27,8 +27,8 @@ export const studentsTable = pgTable('students', {
   sector: text(),
   posting_entry_level_job: varchar({ length: 10 }),
   placement_county: varchar({ length: 100 }),
-  placement_proof: varchar({ length: 255 }),
-  training_proof: varchar({ length: 255 }),
+  placement_proof_key: varchar({ length: 255 }), // S3 key for deletion
+  training_proof_key: varchar({ length: 255 }), // S3 key for deletion
   training_proof_uploaded: varchar({ length: 10 }),
   placement_proof_uploaded: varchar({ length: 10 }),
   green_job: varchar({ length: 10 }),

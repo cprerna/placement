@@ -3,8 +3,7 @@ import { StackProvider, StackTheme } from '@stackframe/stack';
 import { stackServerApp } from '../stack';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import Sidebar from '../components/app-sidebar';
-import Topbar from './topbar/page';
+
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,13 +30,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <StackProvider app={stackServerApp}>
           <StackTheme>
-            <div className="flex h-screen w-screen overflow-hidden">
-              <Sidebar />
-              <div className="flex flex-col flex-1 min-w-0">
-                <Topbar />
-                <main className="flex-1 p-4 bg-gray-200 overflow-auto">{children}</main>
-              </div>
-            </div>
+            {children}
           </StackTheme>
         </StackProvider>
       </body>
