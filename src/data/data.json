@@ -6,7 +6,7 @@
 		"reporting_month": "Jun-25",
 		"unique_code": "HF-BL001",
 		"name": "Amreen",
-				"photo": "/images/default.png",
+		"photo": "/images/default.png",
 		"application_form": "/application/default.pdf",
 		"attendance": "/attendance/default.pdf",
 		"placement_doc": "/placement/default.pdf",
