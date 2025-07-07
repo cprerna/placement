@@ -307,6 +307,8 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [selectedRow, setSelectedRow] = React.useState<InferSelectModel<typeof studentsTable> | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editForm, setEditForm] = React.useState<any>(null);
 
   const handleRowClick = (row: InferSelectModel<typeof studentsTable>) => {
     setSelectedRow(row);
@@ -321,8 +323,25 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
   };
 
   const handleEdit = () => {
-    // TODO: Implement edit functionality
-    console.log('Edit clicked for:', selectedRow);
+    setEditForm(selectedRow);
+    setIsEditing(true);
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setEditForm({
+      ...editForm,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleEditSave = () => {
+    // TODO: Save logic (API call or state update)
+    setIsEditing(false);
+    setIsModalOpen(false);
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
   };
 
   const table = useReactTable({
@@ -509,31 +528,33 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
             <DialogDescription className="print:text-lg print:text-center print:mb-6">
               Complete information for {selectedRow?.name}
             </DialogDescription>
-            {selectedRow?.photo && (
-              <div className="mb-2">
-                <img
-                  src={selectedRow.photo}
-                  alt="Photo"
-                  style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }}
-                />
-              </div>
-            )}
-            {selectedRow?.application_form && (
-              <div className="mb-4">
-                <a
-                  href={selectedRow.application_form}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline"
-                >
-                  Open Application Form
-                </a>
-              </div>
-            )}
           </DialogHeader>
 
           {selectedRow && (
             <div className="flex-1 overflow-y-auto print:overflow-visible print:text-black print:bg-white print:block">
+              {/* Move image and application form here */}
+              {selectedRow.photo && (
+                <div className="mb-2">
+                  <img
+                    src={selectedRow.photo}
+                    alt="Photo"
+                    style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                  />
+                </div>
+              )}
+              {selectedRow.application_form && (
+                <div className="mb-4">
+                  <a
+                    href={selectedRow.application_form}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    Open Application Form
+                  </a>
+                </div>
+              )}
+
               {/* Print Title - only visible in print */}
               <div className="hidden print:block print:text-center print:mb-8">
                 <h1 className="text-3xl font-bold mb-2">Placement Record</h1>
@@ -660,7 +681,7 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
                           rel="noopener noreferrer"
                           className="text-blue-600 underline"
                         >
-                          View Placement Document
+                          View
                         </a>
                       </div>
                     )}
@@ -722,17 +743,109 @@ export function DataTable({ data = [] }: { data: InferSelectModel<typeof student
           )}
 
           <DialogFooter className="flex-shrink-0 print:hidden">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Close
-            </Button>
-            <Button variant="outline" onClick={handleEdit}>
-              Edit
-            </Button>
-            <Button onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
+            {isEditing ? (
+              <>
+                <Button variant="outline" onClick={handleEditCancel}>
+                  Cancel
+                </Button>
+                <Button onClick={handleEditSave}>
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                  Close
+                </Button>
+                <Button variant="outline" onClick={handleEdit}>
+                  Edit
+                </Button>
+                <Button onClick={handlePrint}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print
+                </Button>
+              </>
+            )}
           </DialogFooter>
+
+          {isEditing && editForm && (
+            <div
+              className="p-4"
+              style={{
+                maxHeight: '60vh',
+                overflowY: 'auto',
+              }}
+            >
+              {/* Show photo and application form in edit mode */}
+              {editForm.photo && (
+                <div className="mb-2">
+                  <img
+                    src={typeof editForm.photo === 'string' ? editForm.photo : URL.createObjectURL(editForm.photo)}
+                    alt="Photo"
+                    style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                  />
+                </div>
+              )}
+              {editForm.application_form && typeof editForm.application_form === 'string' && (
+                <div className="mb-4">
+                  <a
+                    href={editForm.application_form}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    Open Application Form
+                  </a>
+                </div>
+              )}
+
+              <form className="space-y-4">
+                {Object.keys(editForm).map((key) => {
+                  // File fields
+                  if (
+                    key === 'photo' ||
+                    key === 'application_form' ||
+                    key === 'attendance' ||
+                    key === 'placement_doc'
+                  ) {
+                    return (
+                      <div key={key}>
+                        <label className="block font-semibold capitalize">{key.replace(/_/g, ' ')}</label>
+                        <input
+                          type="file"
+                          name={key}
+                          accept={key === 'photo' ? 'image/*' : undefined}
+                          className="border rounded px-2 py-1 w-full"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setEditForm({
+                                ...editForm,
+                                [key]: file,
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+                  // Text fields
+                  return (
+                    <div key={key}>
+                      <label className="block font-semibold capitalize">{key.replace(/_/g, ' ')}</label>
+                      <input
+                        className="border rounded px-2 py-1 w-full"
+                        name={key}
+                        value={editForm[key] ?? ''}
+                        onChange={handleEditChange}
+                        disabled={key === 'id'} // Prevent editing the id field
+                      />
+                    </div>
+                  );
+                })}
+              </form>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
