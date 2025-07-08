@@ -44,7 +44,21 @@ export function MonthPicker({
     setOpen(false);
   };
 
-  const displayValue = value ? format(new Date(value + '-01'), 'MMMM yyyy') : placeholder;
+  const getDisplayValue = () => {
+    if (!value) return placeholder;
+
+    try {
+      // Try to parse the value as a valid date
+      const dateStr = value.includes('-') ? value + '-01' : `2025-01-01`;
+      return format(new Date(dateStr), 'MMMM yyyy');
+    } catch (error) {
+      // If parsing fails, return the original value or placeholder
+      console.warn('Invalid date value in MonthPicker:', value);
+      return value || placeholder;
+    }
+  };
+
+  const displayValue = getDisplayValue();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

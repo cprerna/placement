@@ -17,12 +17,33 @@ interface DatePickerProps {
 
 export function DatePicker({ value, onValueChange, placeholder = 'Pick a date', disabled = false }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const dateValue = value ? new Date(value) : undefined;
+
+  const getDateValue = () => {
+    if (!value) return undefined;
+    try {
+      return new Date(value);
+    } catch (error) {
+      console.warn('Invalid date value in DatePicker:', value);
+      return undefined;
+    }
+  };
+
+  const dateValue = getDateValue();
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       onValueChange?.(format(date, 'yyyy-MM-dd'));
       setOpen(false);
+    }
+  };
+
+  const getDisplayValue = () => {
+    if (!value) return placeholder;
+    try {
+      return format(new Date(value), 'PPP');
+    } catch (error) {
+      console.warn('Invalid date value for display:', value);
+      return value || placeholder;
     }
   };
 
@@ -35,7 +56,7 @@ export function DatePicker({ value, onValueChange, placeholder = 'Pick a date', 
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(new Date(value), 'PPP') : placeholder}
+          {getDisplayValue()}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">

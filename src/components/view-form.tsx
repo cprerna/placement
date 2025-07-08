@@ -214,6 +214,23 @@ export function ViewForm({ studentData, open, onOpenChange, onEdit, onDelete, ch
 
             <Separator />
 
+            {/* Documents */}
+            <div className="space-y-4">
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <FileText className="h-5 w-5" />
+                Documents
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <DocumentLink label="Application Form" fileKey={studentData.application_form_key} />
+                <DocumentLink label="Training Proof" fileKey={studentData.training_proof_key} />
+                <DocumentLink label="Placement Proof" fileKey={studentData.placement_proof_key} />
+                <DocumentLink label="Placement Document" fileKey={studentData.placement_doc_key} />
+                <DocumentLink label="Attendance Document" fileKey={studentData.attendance_key} />
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Location Information */}
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-lg font-semibold">
@@ -326,22 +343,7 @@ export function ViewForm({ studentData, open, onOpenChange, onEdit, onDelete, ch
               </div>
             </div>
 
-            <Separator />
-
-            {/* Documents */}
-            <div className="space-y-4">
-              <h3 className="flex items-center gap-2 text-lg font-semibold">
-                <FileText className="h-5 w-5" />
-                Documents
-              </h3>
-              <div className="space-y-2">
-                <DocumentLink label="Application Form" fileKey={studentData.application_form_key} />
-                <DocumentLink label="Attendance Document" fileKey={studentData.attendance_key} />
-                <DocumentLink label="Placement Document" fileKey={studentData.placement_doc_key} />
-                <DocumentLink label="Placement Proof" fileKey={studentData.placement_proof_key} />
-                <DocumentLink label="Training Proof" fileKey={studentData.training_proof_key} />
-              </div>
-            </div>
+            {/* <Separator /> */}
 
             {/* Remarks */}
             {studentData.remarks && (

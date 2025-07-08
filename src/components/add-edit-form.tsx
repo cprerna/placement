@@ -104,12 +104,85 @@ const convertStudentDataForForm = (data: StudentData): StudentFormData => {
       } else {
         formData[key] = '';
       }
+    } else if ((key === 'reporting_month' || key === 'placement_month') && typeof value === 'string') {
+      // Handle legacy month formats like "May" -> "2025-05"
+      formData[key] = normalizeMonthValue(value);
+    } else if ((key === 'start_date' || key === 'end_date') && typeof value === 'string') {
+      // Handle legacy date formats
+      formData[key] = normalizeDateValue(value);
     } else {
       formData[key] = value;
     }
   }
 
   return formData as StudentFormData;
+};
+
+// Helper function to normalize month values from legacy format
+const normalizeMonthValue = (value: string): string => {
+  if (!value) return '';
+
+  // If already in YYYY-MM format, return as-is
+  if (/^\d{4}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // If it's just a month name, convert to 2025-MM format
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  const monthIndex = monthNames.findIndex((month) => month.toLowerCase() === value.toLowerCase());
+
+  if (monthIndex !== -1) {
+    return `2025-${String(monthIndex + 1).padStart(2, '0')}`;
+  }
+
+  // If it's in MMM format (like "May"), try to match
+  const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const shortMonthIndex = shortMonthNames.findIndex((month) => month.toLowerCase() === value.toLowerCase());
+
+  if (shortMonthIndex !== -1) {
+    return `2025-${String(shortMonthIndex + 1).padStart(2, '0')}`;
+  }
+
+  // If no match found, return empty string to avoid errors
+  return '';
+};
+
+// Helper function to normalize date values from legacy format
+const normalizeDateValue = (value: string): string => {
+  if (!value) return '';
+
+  // If already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // Try to parse the date and see if it's valid
+  try {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+    }
+  } catch (error) {
+    console.warn('Could not parse date value:', value);
+  }
+
+  // If no valid date found, return empty string to avoid errors
+  return '';
 };
 
 // Type for student data based on the schema
